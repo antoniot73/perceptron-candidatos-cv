@@ -1,0 +1,50 @@
+# =========================
+# Entornos virtuales
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# Caché y compilados Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Pytest
+# =========================
+.pytest_cache/
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Salidas generadas por el proyecto
+# Se regeneran con python main.py o desde el notebook
+# =========================
+outputs/
+
+# =========================
+# Archivos del sistema operativo
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# Configuración local de editores
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Logs y archivos temporales
+# =========================
+*.log
+*.tmp
+*.bak

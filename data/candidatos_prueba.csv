@@ -1,0 +1,11 @@
+id,candidato,anios_experiencia,puntaje_tecnico,x1_experiencia_norm,x2_puntaje_norm,cumple_experiencia,cumple_puntaje,suma_cumplimiento,y_esperada,observacion
+1,Prueba 01,3.0,75,0.75,0.75,1,1,1.5,1,Cumple
+2,Prueba 02,1.5,95,0.38,0.95,0,1,1.33,0,No cumple
+3,Prueba 03,4.0,60,1.0,0.6,1,0,1.6,0,No cumple
+4,Prueba 04,2.0,68,0.5,0.68,0,0,1.18,0,No cumple
+5,Prueba 05,2.8,72,0.7,0.72,1,1,1.42,1,Cumple
+6,Prueba 06,0.8,88,0.2,0.88,0,1,1.08,0,No cumple
+7,Prueba 07,5.0,82,1.0,0.82,1,1,1.82,1,Cumple
+8,Prueba 08,3.5,55,0.88,0.55,1,0,1.43,0,No cumple
+9,Prueba 09,1.0,70,0.25,0.7,0,1,0.95,0,No cumple
+10,Prueba 10,2.5,65,0.62,0.65,0,0,1.27,0,No cumple
