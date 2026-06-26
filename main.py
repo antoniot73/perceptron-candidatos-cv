@@ -77,6 +77,11 @@ def run_project() -> None:
         max_epochs=100,
         initial_bias=0.0,
     )
+    initial_weights = untrained_model.weights.copy()
+    initial_bias = untrained_model.bias
+    print(f"Pesos iniciales: {initial_weights}")
+    print(f"Bias inicial: {initial_bias:.4f}")
+
     z_initial = untrained_model.decision_scores(x_train)
     y_initial = untrained_model.predict(x_train)
     initial_accuracy = accuracy_score(y_train, y_initial)
@@ -99,9 +104,14 @@ def run_project() -> None:
     )
     model.initialize_weights(n_features=2, mode="zeros")
     errors = model.train(x_train, y_train)
+    weight_change = model.weights - initial_weights
+    bias_change = model.bias - initial_bias
+
     print(f"Errores por época: {errors}")
     print(f"Pesos finales: {model.weights}")
-    print(f"Sesgo final: {model.bias:.4f}")
+    print(f"Bias final: {model.bias:.4f}")
+    print(f"Cambio de pesos: {weight_change}")
+    print(f"Cambio del bias: {bias_change:.4f}")
 
     print("\n--- Prueba con entrenamiento ---")
     z_final = model.decision_scores(x_train)
