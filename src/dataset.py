@@ -1,4 +1,17 @@
-"""Carga, validación y preparación de datasets."""
+"""Carga, validación y preparación de datasets del proyecto.
+
+Este módulo concentra la capa de entrada y validación de datos. Su función
+dentro del pipeline es garantizar que los archivos CSV usados por el perceptrón
+contengan las columnas requeridas, rangos numéricos válidos y etiquetas
+coherentes con la regla académica de clasificación:
+
+    x1 >= 0.70 y x2 >= 0.70 -> y = 1
+    en otro caso            -> y = 0
+
+También contiene funciones puras para normalizar variables y calcular etiquetas
+esperadas, lo que facilita la reproducibilidad, las pruebas unitarias y la
+trazabilidad del experimento.
+"""
 
 from __future__ import annotations
 
@@ -28,10 +41,15 @@ REQUIRED_TEST_COLUMNS: tuple[str, ...] = (
 
 
 def configure_logging(level: int = logging.INFO) -> None:
-    """Configura logging básico para ejecución local.
+    """Configura la bitácora básica de ejecución del proyecto.
+
+    Esta función prepara el registro de eventos para que el pipeline informe
+    acciones relevantes, como la carga de datasets y la validación de registros.
+    Se usa tanto en ejecución local como desde el notebook para mantener una
+    salida trazable y homogénea.
 
     Args:
-        level: Nivel mínimo de logging.
+        level: Nivel mínimo de logging que será mostrado en consola.
     """
     logging.basicConfig(
         level=level,
@@ -53,17 +71,22 @@ def format_dataset_path(path: str | Path) -> str:
 
 
 def normalize_experience(years: float, max_years: float = 4.0) -> float:
-    """Normaliza años de experiencia al intervalo [0, 1].
+    """Normaliza años de experiencia laboral al intervalo [0, 1].
+
+    Dentro del pipeline, esta función transforma la medición original de
+    experiencia, expresada en años, en una variable numérica comparable para el
+    perceptrón. El valor de referencia ``max_years`` representa la experiencia
+    máxima considerada para la práctica; valores superiores se saturan en 1.0.
 
     Args:
-        years: Años de experiencia laboral, de 0 a 4 años o más.
-        max_years: Valor de referencia equivalente a 1.0.
+        years: Años de experiencia laboral. Debe ser mayor o igual que cero.
+        max_years: Valor de referencia que equivale a 1.0 en escala normalizada.
 
     Returns:
-        Experiencia normalizada.
+        Experiencia normalizada en el intervalo cerrado [0, 1].
 
     Raises:
-        ValueError: Si los valores están fuera de rango.
+        ValueError: Si ``years`` es negativo o ``max_years`` no es positivo.
     """
     if max_years <= 0:
         raise ValueError("max_years debe ser mayor que cero.")
@@ -73,13 +96,17 @@ def normalize_experience(years: float, max_years: float = 4.0) -> float:
 
 
 def normalize_score(score: float) -> float:
-    """Normaliza puntaje técnico al intervalo [0, 1].
+    """Normaliza el puntaje técnico al intervalo [0, 1].
+
+    Esta transformación convierte la evaluación técnica original, expresada en
+    una escala de 0 a 100 puntos, en una variable compatible con el modelo
+    lineal del perceptrón y con la regla de cumplimiento mínimo de la práctica.
 
     Args:
-        score: Puntaje entre 0 y 100.
+        score: Puntaje técnico original. Debe estar entre 0 y 100.
 
     Returns:
-        Puntaje normalizado.
+        Puntaje técnico normalizado en el intervalo cerrado [0, 1].
 
     Raises:
         ValueError: Si el puntaje está fuera del rango permitido.
@@ -111,7 +138,12 @@ def compute_expected_label(
     x2: float,
     threshold: float = MIN_APPROVAL_THRESHOLD,
 ) -> int:
-    """Calcula etiqueta esperada con regla de mínimo simultáneo.
+    """Calcula la etiqueta esperada mediante la regla de mínimo simultáneo.
+
+    Esta función define la lógica supervisada que el perceptrón debe aprender.
+    La salida positiva solo ocurre cuando las dos variables normalizadas cumplen
+    el umbral mínimo. En términos lógicos, equivale a una compuerta AND sobre
+    los indicadores de cumplimiento de experiencia y puntaje técnico.
 
     Args:
         x1: Experiencia laboral normalizada.
@@ -119,7 +151,7 @@ def compute_expected_label(
         threshold: Mínimo aprobatorio individual para cada variable.
 
     Returns:
-        1 si x1 >= threshold y x2 >= threshold; si no, 0.
+        1 si ``x1 >= threshold`` y ``x2 >= threshold``; en caso contrario, 0.
     """
     cumple_x1 = compute_compliance_indicator(x1, threshold)
     cumple_x2 = compute_compliance_indicator(x2, threshold)
@@ -241,13 +273,23 @@ def validate_expected_labels(
 
 
 def load_training_dataset(path: str | Path) -> pd.DataFrame:
-    """Carga y valida dataset de entrenamiento.
+    """Carga y valida el dataset de entrenamiento del perceptrón.
+
+    Esta función representa la entrada principal de datos supervisados del
+    pipeline. Verifica que el archivo exista, que contenga las columnas
+    requeridas, que los valores numéricos estén dentro de rangos válidos y que
+    la etiqueta ``y_pasa_entrevista`` sea coherente con la regla de clasificación.
 
     Args:
-        path: Ruta del CSV.
+        path: Ruta del archivo CSV con los candidatos de entrenamiento.
 
     Returns:
-        DataFrame validado.
+        DataFrame validado, listo para extraer variables de entrada y etiqueta.
+
+    Raises:
+        FileNotFoundError: Si el archivo no existe.
+        ValueError: Si faltan columnas, hay rangos inválidos o etiquetas
+            inconsistentes.
     """
     df = load_csv(path)
     validate_columns(df, REQUIRED_TRAIN_COLUMNS)
@@ -258,13 +300,22 @@ def load_training_dataset(path: str | Path) -> pd.DataFrame:
 
 
 def load_test_dataset(path: str | Path) -> pd.DataFrame:
-    """Carga y valida dataset de prueba.
+    """Carga y valida el dataset de candidatos nuevos.
+
+    Esta función prepara los casos externos al entrenamiento que se utilizan para
+    comprobar si el perceptrón entrenado aplica correctamente la regla aprendida
+    a registros no vistos durante el ajuste de pesos y bias.
 
     Args:
-        path: Ruta del CSV.
+        path: Ruta del archivo CSV con candidatos de prueba.
 
     Returns:
-        DataFrame validado.
+        DataFrame validado, listo para evaluación del modelo entrenado.
+
+    Raises:
+        FileNotFoundError: Si el archivo no existe.
+        ValueError: Si faltan columnas, hay rangos inválidos o etiquetas
+            inconsistentes.
     """
     df = load_csv(path)
     validate_columns(df, REQUIRED_TEST_COLUMNS)

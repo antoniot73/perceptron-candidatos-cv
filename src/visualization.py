@@ -1,4 +1,10 @@
-"""Visualizaciones del perceptrón."""
+"""Visualizaciones del pipeline del perceptrón.
+
+Este módulo contiene la capa de comunicación visual del proyecto. Sus funciones
+generan gráficas para interpretar el aprendizaje del perceptrón: evolución de
+errores, comparación de exactitud, criterios mínimos de aprobación y frontera de
+decisión aprendida.
+"""
 
 from __future__ import annotations
 
@@ -10,11 +16,19 @@ import pandas as pd
 
 
 def plot_error_history(errors: list[int], output_path: str | Path | None = None) -> None:
-    """Grafica errores por época.
+    """Grafica la evolución de errores durante el entrenamiento.
+
+    Esta visualización permite comprobar si el perceptrón reduce sus errores a
+    medida que actualiza pesos y bias. En un problema linealmente separable,
+    como el de esta práctica, la curva debe tender a cero cuando el modelo
+    converge.
 
     Args:
-        errors: Lista de errores por época.
+        errors: Lista de errores cometidos en cada época.
         output_path: Ruta opcional para guardar la figura.
+
+    Raises:
+        ValueError: Si la lista de errores está vacía.
     """
     if not errors:
         raise ValueError("La lista de errores no puede estar vacía.")
@@ -39,16 +53,21 @@ def plot_minimum_criteria(
     threshold: float = 0.70,
     title: str = "Criterios mínimos de aprobación",
 ) -> None:
-    """Grafica candidatos con umbrales mínimos por variable.
+    """Grafica los candidatos frente a los criterios mínimos de aprobación.
+
+    La figura muestra las variables normalizadas ``x1`` y ``x2`` junto con los
+    umbrales de cumplimiento. Sirve para explicar visualmente que la clase
+    positiva solo ocurre en la zona donde ambas variables alcanzan o superan el
+    mínimo aprobatorio.
 
     Args:
-        df: DataFrame con x1, x2 y etiqueta.
-        output_path: Ruta opcional para guardar.
+        df: DataFrame con variables normalizadas y etiqueta real.
+        output_path: Ruta opcional para guardar la figura.
         threshold: Mínimo aprobatorio individual.
         title: Título de la gráfica.
 
     Raises:
-        ValueError: Si faltan columnas requeridas.
+        ValueError: Si faltan columnas requeridas o el umbral está fuera de [0, 1].
     """
     required = {"x1_experiencia_norm", "x2_puntaje_norm"}
     if not required.issubset(df.columns):
@@ -103,16 +122,20 @@ def plot_learned_and_boundary(
     output_path: str | Path | None = None,
     title: str = "Frontera aprendida sobre variables binarias de cumplimiento",
 ) -> None:
-    """Grafica frontera aprendida sobre c1 y c2.
+    """Grafica la frontera de decisión aprendida por el perceptrón.
+
+    La gráfica se construye sobre las variables binarias ``c1`` y ``c2`` y
+    permite verificar si el modelo aprendió una regla equivalente a la compuerta
+    lógica AND. La frontera se obtiene a partir de los pesos y el bias finales.
 
     Args:
         weights: Pesos del perceptrón entrenado.
         bias: Sesgo del perceptrón entrenado.
-        output_path: Ruta opcional para guardar.
+        output_path: Ruta opcional para guardar la figura.
         title: Título de la gráfica.
 
     Raises:
-        ValueError: Si los pesos no corresponden a dos variables.
+        ValueError: Si los pesos no corresponden a exactamente dos variables.
     """
     if weights.shape[0] != 2:
         raise ValueError("La gráfica solo soporta dos variables.")
@@ -163,12 +186,19 @@ def plot_accuracy_comparison(
     final_accuracy: float,
     output_path: str | Path | None = None,
 ) -> None:
-    """Grafica exactitud antes y después de entrenar.
+    """Grafica la exactitud antes y después del entrenamiento.
+
+    Esta visualización resume el impacto del aprendizaje supervisado. Compara el
+    desempeño del perceptrón sin pesos ajustados contra el modelo entrenado con
+    la regla de Rosenblatt.
 
     Args:
         initial_accuracy: Exactitud antes del entrenamiento. Debe estar entre 0 y 1.
         final_accuracy: Exactitud después del entrenamiento. Debe estar entre 0 y 1.
-        output_path: Ruta opcional para guardar.
+        output_path: Ruta opcional para guardar la figura.
+
+    Raises:
+        ValueError: Si alguna exactitud está fuera del intervalo [0, 1].
     """
     values = [initial_accuracy, final_accuracy]
     labels = ["Sin entrenamiento", "Con entrenamiento"]

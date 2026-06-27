@@ -17,14 +17,19 @@ logger = logging.getLogger(__name__)
 
 
 def accuracy_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    """Calcula la exactitud de clasificación.
+    """Calcula la exactitud de clasificación del perceptrón.
+
+    En el pipeline de evaluación, esta métrica resume la proporción de registros
+    clasificados correctamente. Se utiliza para comparar el desempeño del modelo
+    sin entrenamiento contra el modelo entrenado y para evaluar candidatos
+    nuevos.
 
     Args:
-        y_true: Vector con etiquetas reales.
-        y_pred: Vector con etiquetas predichas.
+        y_true: Vector con etiquetas reales o esperadas.
+        y_pred: Vector con etiquetas predichas por el perceptrón.
 
     Returns:
-        Proporción de aciertos entre 0.0 y 1.0.
+        Proporción de aciertos en el intervalo [0.0, 1.0].
 
     Raises:
         ValueError: Si los vectores tienen longitudes diferentes o están vacíos.
@@ -40,13 +45,18 @@ def accuracy_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 def confusion_counts(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, int]:
     """Obtiene conteos básicos de clasificación binaria.
 
+    Esta función complementa la exactitud al distinguir aciertos y errores según
+    la clase. En la práctica permite interpretar si el perceptrón genera falsos
+    positivos, falsos negativos o clasificaciones correctas para las clases
+    ``pasa`` y ``no pasa``.
+
     Args:
-        y_true: Vector con etiquetas reales.
-        y_pred: Vector con etiquetas predichas.
+        y_true: Vector con etiquetas reales o esperadas.
+        y_pred: Vector con etiquetas predichas por el modelo.
 
     Returns:
-        Diccionario con verdaderos positivos, verdaderos negativos,
-        falsos positivos y falsos negativos.
+        Diccionario con verdaderos positivos, verdaderos negativos, falsos
+        positivos y falsos negativos.
 
     Raises:
         ValueError: Si los vectores tienen longitudes diferentes.
@@ -75,18 +85,23 @@ def build_results_table(
     prediction_column: str,
     z_column: str,
 ) -> pd.DataFrame:
-    """Construye una tabla de resultados con puntajes z y predicciones.
+    """Construye una tabla trazable de resultados del perceptrón.
+
+    La tabla resultante conserva los datos originales e incorpora la suma
+    ponderada ``z``, la predicción binaria y una columna de acierto. Esta salida
+    es usada en el notebook, en los archivos CSV y en el análisis comparativo
+    entre perceptrón sin entrenamiento y perceptrón entrenado.
 
     Args:
-        df: DataFrame base.
+        df: DataFrame base con candidatos y variables del problema.
         z_values: Valores de suma ponderada calculados por el perceptrón.
-        predictions: Predicciones binarias del perceptrón.
-        target_column: Nombre de la columna objetivo real.
+        predictions: Predicciones binarias generadas por el modelo.
+        target_column: Nombre de la columna con la etiqueta real o esperada.
         prediction_column: Nombre de la columna para guardar predicciones.
-        z_column: Nombre de la columna para guardar valores z.
+        z_column: Nombre de la columna para guardar valores ``z``.
 
     Returns:
-        DataFrame con columnas originales más valores z, predicciones y acierto.
+        DataFrame con columnas originales más ``z``, predicción y acierto.
 
     Raises:
         ValueError: Si falta la columna objetivo o las longitudes no coinciden.
@@ -125,7 +140,12 @@ def _display_relative_path(path: Path) -> str:
 
 
 def save_dataframe(df: pd.DataFrame, output_path: Path) -> None:
-    """Guarda un DataFrame en CSV y reporta una ruta relativa.
+    """Guarda una tabla de resultados en CSV con salida de ruta relativa.
+
+    Esta función cierra la etapa de reporte tabular del pipeline. Crea la carpeta
+    de salida cuando sea necesario, persiste los resultados y registra una ruta
+    relativa para evitar exponer rutas absolutas del equipo local en consola,
+    notebook o HTML.
 
     Args:
         df: DataFrame a guardar.

@@ -1,4 +1,15 @@
-"""Ejecución local completa del proyecto.
+"""Punto de entrada local del proyecto del perceptrón.
+
+Este script orquesta el pipeline completo de la práctica:
+
+1. Configura logging.
+2. Carga y valida datasets.
+3. Evalúa un perceptrón sin entrenamiento.
+4. Entrena el perceptrón de Frank Rosenblatt.
+5. Evalúa el modelo entrenado.
+6. Clasifica candidatos nuevos.
+7. Guarda tablas CSV.
+8. Genera gráficas de análisis.
 
 Ejecutar:
     python main.py
@@ -31,14 +42,23 @@ FEATURE_COLUMNS: list[str] = ["cumple_experiencia", "cumple_puntaje"]
 
 
 def get_features_and_target(df: pd.DataFrame, target_column: str) -> tuple[np.ndarray, np.ndarray]:
-    """Extrae matriz X y vector y desde un DataFrame.
+    """Extrae variables de entrada y etiqueta objetivo desde un DataFrame.
+
+    Esta función conecta la capa de datos con la capa de modelado. Selecciona
+    únicamente las variables binarias usadas por el perceptrón
+    (``cumple_experiencia`` y ``cumple_puntaje``) y separa la columna objetivo
+    para entrenamiento o evaluación.
 
     Args:
-        df: DataFrame fuente.
-        target_column: Columna objetivo.
+        df: DataFrame validado con candidatos.
+        target_column: Nombre de la columna objetivo real o esperada.
 
     Returns:
-        Tupla (X, y).
+        Tupla ``(X, y)`` donde ``X`` es la matriz de entradas y ``y`` el vector
+        de etiquetas.
+
+    Raises:
+        ValueError: Si faltan variables de entrada o la columna objetivo.
     """
     missing_features = [column for column in FEATURE_COLUMNS if column not in df.columns]
     if missing_features:
@@ -52,10 +72,17 @@ def get_features_and_target(df: pd.DataFrame, target_column: str) -> tuple[np.nd
 
 
 def run_project() -> None:
-    """Ejecuta el flujo completo del proyecto local.
+    """Ejecuta el pipeline completo del proyecto local.
 
-    Carga datos, evalúa el perceptrón sin entrenamiento, entrena el modelo,
-    prueba candidatos nuevos, guarda tablas y genera gráficas.
+    Esta función integra las etapas académicas y computacionales de la práctica.
+    Primero carga y valida los datasets, luego construye un perceptrón sin
+    entrenamiento para obtener una línea base, entrena el modelo con la regla de
+    Rosenblatt y compara los resultados antes y después del aprendizaje.
+
+    Finalmente, evalúa candidatos nuevos, genera tablas CSV y produce gráficas
+    que documentan errores por época, exactitud, criterios mínimos y frontera de
+    decisión. Es el punto de entrada principal para reproducir el proyecto desde
+    consola.
     """
     configure_logging()
     print("\n=== Proyecto: Perceptrón de Rosenblatt para selección de candidatos ===\n")
@@ -164,8 +191,8 @@ def run_project() -> None:
     plot_accuracy_comparison(initial_accuracy, final_accuracy, OUTPUT_GRAPHS / "comparacion_exactitud.png")
 
     print("\nProyecto ejecutado correctamente.")
-    print(f"Tablas guardadas en: {OUTPUT_TABLES}")
-    print(f"Gráficas guardadas en: {OUTPUT_GRAPHS}")
+    print("Tablas guardadas en: outputs/tablas")
+    print("Gráficas guardadas en: outputs/graficas")
 
 
 if __name__ == "__main__":

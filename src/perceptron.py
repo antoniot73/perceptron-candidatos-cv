@@ -1,4 +1,11 @@
-"""Implementación del perceptrón de Frank Rosenblatt."""
+"""Implementación propia del perceptrón de Frank Rosenblatt.
+
+Este módulo contiene la capa de modelado del proyecto. Traduce el algoritmo
+matemático del perceptrón a una clase Python orientada a objetos, incorporando
+pesos, bias, suma ponderada, función umbral, predicción y actualización por
+error. No depende de modelos preconstruidos de bibliotecas de machine learning,
+lo que permite observar directamente el mecanismo de aprendizaje supervisado.
+"""
 
 from __future__ import annotations
 
@@ -12,12 +19,17 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class PerceptronConfig:
-    """Configuración del perceptrón.
+    """Configuración inmutable del perceptrón de Rosenblatt.
+
+    Esta estructura agrupa los hiperparámetros necesarios para controlar el
+    entrenamiento del modelo. Al estar definida como ``dataclass`` congelada,
+    evita modificaciones accidentales durante la ejecución del pipeline y mejora
+    la reproducibilidad del experimento.
 
     Attributes:
-        learning_rate: Tasa de aprendizaje.
-        max_epochs: Número máximo de épocas.
-        initial_bias: Sesgo inicial.
+        learning_rate: Tasa de aprendizaje usada para actualizar pesos y bias.
+        max_epochs: Número máximo de recorridos sobre el conjunto de datos.
+        initial_bias: Valor inicial del sesgo del perceptrón.
         random_seed: Semilla opcional para inicialización aleatoria.
     """
 
@@ -35,7 +47,14 @@ class PerceptronConfig:
 
 
 class RosenblattPerceptron:
-    """Perceptrón binario de Rosenblatt para clasificación lineal."""
+    """Perceptrón binario de Rosenblatt para clasificación lineal.
+
+    La clase implementa el ciclo básico del aprendizaje supervisado:
+    calcular ``z = w·x + b``, aplicar una función umbral, comparar la predicción
+    con la etiqueta real y actualizar pesos y bias cuando existe error. En esta
+    práctica se usa para aprender una regla equivalente a una compuerta AND
+    sobre dos indicadores de cumplimiento.
+    """
 
     def __init__(self, config: PerceptronConfig | None = None) -> None:
         """Inicializa el perceptrón.
@@ -78,16 +97,21 @@ class RosenblattPerceptron:
         max_epochs: int = 100,
         initial_bias: float = 0.0,
     ) -> "RosenblattPerceptron":
-        """Crea un perceptrón con pesos iniciales en cero.
+        """Crea un perceptrón inicializado con pesos en cero.
+
+        Este constructor alternativo se usa en la práctica para observar el
+        comportamiento del modelo sin entrenamiento. Al iniciar con ``w = 0`` y
+        ``b = 0``, las predicciones iniciales sirven como punto de comparación
+        frente al perceptrón entrenado.
 
         Args:
-            n_features: Número de variables.
-            learning_rate: Tasa de aprendizaje.
-            max_epochs: Máximo de épocas.
+            n_features: Número de variables de entrada.
+            learning_rate: Tasa de aprendizaje del modelo.
+            max_epochs: Número máximo de épocas permitidas.
             initial_bias: Sesgo inicial.
 
         Returns:
-            Modelo inicializado.
+            Instancia de ``RosenblattPerceptron`` lista para predecir.
         """
         model = cls(PerceptronConfig(learning_rate, max_epochs, initial_bias, None))
         model.initialize_weights(n_features=n_features, mode="zeros")
@@ -95,13 +119,17 @@ class RosenblattPerceptron:
 
     @staticmethod
     def activation(z_value: float) -> int:
-        """Función escalón binaria.
+        """Aplica la función umbral binaria del perceptrón.
+
+        La activación convierte la suma ponderada ``z`` en una decisión de clase.
+        Esta implementación utiliza la convención ``1`` cuando ``z >= 0`` y ``0``
+        cuando ``z < 0``.
 
         Args:
-            z_value: Suma ponderada.
+            z_value: Suma ponderada calculada como ``w·x + b``.
 
         Returns:
-            1 si z_value >= 0; si no, 0.
+            Clase binaria: 1 si ``z_value >= 0``; en caso contrario, 0.
         """
         return int(z_value >= 0)
 
@@ -158,13 +186,17 @@ class RosenblattPerceptron:
         return self.activation(self.net_input(x_row))
 
     def predict(self, x_matrix: np.ndarray) -> np.ndarray:
-        """Predice una matriz de observaciones.
+        """Predice clases binarias para una matriz de observaciones.
+
+        Esta función representa la etapa de inferencia del pipeline. Para cada
+        fila de entrada calcula la suma ponderada, aplica la función umbral y
+        devuelve la clasificación correspondiente.
 
         Args:
-            x_matrix: Matriz de entrada.
+            x_matrix: Matriz de entrada con forma ``(n_registros, n_variables)``.
 
         Returns:
-            Vector de predicciones.
+            Vector NumPy con predicciones binarias 0/1.
         """
         self._validate_matrix(x_matrix)
         if self._weights is None:
@@ -175,13 +207,18 @@ class RosenblattPerceptron:
         return np.array(predictions, dtype=int)
 
     def decision_scores(self, x_matrix: np.ndarray) -> np.ndarray:
-        """Calcula valores z para una matriz.
+        """Calcula los valores de decisión ``z`` para una matriz de entrada.
+
+        Los valores ``z = w·x + b`` permiten analizar la posición de cada
+        observación respecto a la frontera de decisión antes de aplicar la
+        función umbral. En la práctica se guardan en las tablas de resultados
+        para dar trazabilidad al proceso de clasificación.
 
         Args:
-            x_matrix: Matriz de entrada.
+            x_matrix: Matriz de entrada con forma ``(n_registros, n_variables)``.
 
         Returns:
-            Vector de valores z.
+            Vector NumPy con los valores de suma ponderada.
         """
         self._validate_matrix(x_matrix)
         if self._weights is None:
@@ -189,14 +226,32 @@ class RosenblattPerceptron:
         return np.array([self.net_input(row) for row in x_matrix], dtype=float)
 
     def train(self, x_matrix: np.ndarray, y_vector: np.ndarray) -> list[int]:
-        """Entrena el perceptrón con regla de Rosenblatt.
+        """Entrena el perceptrón mediante la regla de Rosenblatt.
+
+        Durante cada época, el algoritmo recorre secuencialmente todas las
+        observaciones, calcula la salida del perceptrón, compara la predicción
+        con la etiqueta real y actualiza pesos y bias solo cuando existe error de
+        clasificación.
+
+        La regla de actualización aplicada es:
+
+            w <- w + eta * error * x
+            b <- b + eta * error
+
+        El entrenamiento finaliza cuando se alcanza convergencia, es decir, cero
+        errores en una época, o cuando se cumple el máximo de épocas definido en
+        la configuración.
 
         Args:
-            x_matrix: Variables de entrada.
-            y_vector: Etiquetas reales 0/1.
+            x_matrix: Matriz de variables de entrada.
+            y_vector: Vector de etiquetas reales binarias 0/1.
 
         Returns:
-            Lista de errores por época.
+            Lista con el número de errores cometidos en cada época.
+
+        Raises:
+            TypeError: Si las entradas no son arreglos de NumPy.
+            ValueError: Si las dimensiones, longitudes o etiquetas no son válidas.
         """
         self._validate_training_data(x_matrix, y_vector)
         if self._weights is None:
