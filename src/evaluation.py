@@ -1,4 +1,9 @@
-"""Funciones de evaluación del perceptrón."""
+"""Funciones de evaluación y persistencia de resultados.
+
+Este módulo contiene utilidades para calcular exactitud, construir tablas de
+resultados, obtener conteos de clasificación y guardar DataFrames en archivos CSV
+sin mostrar rutas absolutas locales en consola o notebook.
+"""
 
 from __future__ import annotations
 
@@ -8,43 +13,58 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def accuracy_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    """Calcula exactitud de clasificación.
+    """Calcula la exactitud de clasificación.
 
     Args:
-        y_true: Etiquetas reales.
-        y_pred: Etiquetas predichas.
+        y_true: Vector con etiquetas reales.
+        y_pred: Vector con etiquetas predichas.
 
     Returns:
-        Exactitud entre 0 y 1.
+        Proporción de aciertos entre 0.0 y 1.0.
+
+    Raises:
+        ValueError: Si los vectores tienen longitudes diferentes o están vacíos.
     """
-    if len(y_true) != len(y_pred):
-        raise ValueError("y_true e y_pred deben tener la misma longitud.")
     if len(y_true) == 0:
-        raise ValueError("Los vectores no pueden estar vacíos.")
+        raise ValueError("El vector y_true no puede estar vacío.")
+    if len(y_true) != len(y_pred):
+        raise ValueError("y_true y y_pred deben tener la misma longitud.")
+
     return float(np.mean(y_true == y_pred))
 
 
 def confusion_counts(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, int]:
-    """Calcula conteos TP, TN, FP y FN.
+    """Obtiene conteos básicos de clasificación binaria.
 
     Args:
-        y_true: Etiquetas reales.
-        y_pred: Etiquetas predichas.
+        y_true: Vector con etiquetas reales.
+        y_pred: Vector con etiquetas predichas.
 
     Returns:
-        Diccionario con conteos.
+        Diccionario con verdaderos positivos, verdaderos negativos,
+        falsos positivos y falsos negativos.
+
+    Raises:
+        ValueError: Si los vectores tienen longitudes diferentes.
     """
     if len(y_true) != len(y_pred):
-        raise ValueError("y_true e y_pred deben tener la misma longitud.")
-    tp = int(((y_true == 1) & (y_pred == 1)).sum())
-    tn = int(((y_true == 0) & (y_pred == 0)).sum())
-    fp = int(((y_true == 0) & (y_pred == 1)).sum())
-    fn = int(((y_true == 1) & (y_pred == 0)).sum())
-    return {"TP": tp, "TN": tn, "FP": fp, "FN": fn}
+        raise ValueError("y_true y y_pred deben tener la misma longitud.")
+
+    true_positive = int(np.sum((y_true == 1) & (y_pred == 1)))
+    true_negative = int(np.sum((y_true == 0) & (y_pred == 0)))
+    false_positive = int(np.sum((y_true == 0) & (y_pred == 1)))
+    false_negative = int(np.sum((y_true == 1) & (y_pred == 0)))
+
+    return {
+        "VP": true_positive,
+        "VN": true_negative,
+        "FP": false_positive,
+        "FN": false_negative,
+    }
 
 
 def build_results_table(
@@ -55,38 +75,71 @@ def build_results_table(
     prediction_column: str,
     z_column: str,
 ) -> pd.DataFrame:
-    """Construye tabla de resultados.
+    """Construye una tabla de resultados con puntajes z y predicciones.
 
     Args:
         df: DataFrame base.
-        z_values: Valores z.
-        predictions: Predicciones.
-        target_column: Columna objetivo.
-        prediction_column: Nombre de la predicción.
-        z_column: Nombre de columna z.
+        z_values: Valores de suma ponderada calculados por el perceptrón.
+        predictions: Predicciones binarias del perceptrón.
+        target_column: Nombre de la columna objetivo real.
+        prediction_column: Nombre de la columna para guardar predicciones.
+        z_column: Nombre de la columna para guardar valores z.
 
     Returns:
-        DataFrame ampliado.
+        DataFrame con columnas originales más valores z, predicciones y acierto.
+
+    Raises:
+        ValueError: Si falta la columna objetivo o las longitudes no coinciden.
     """
+    if target_column not in df.columns:
+        raise ValueError(f"No existe la columna objetivo: {target_column}")
+
     if len(df) != len(z_values) or len(df) != len(predictions):
         raise ValueError("df, z_values y predictions deben tener la misma longitud.")
+
     results = df.copy()
     results[z_column] = z_values
     results[prediction_column] = predictions
-    results[f"acierto_{prediction_column}"] = (
-        results[target_column].astype(int) == results[prediction_column].astype(int)
-    )
+    results["acierto"] = (results[target_column].to_numpy(dtype=int) == predictions).astype(int)
+
     return results
 
 
-def save_dataframe(df: pd.DataFrame, path: str | Path) -> None:
-    """Guarda un DataFrame como CSV.
+def _display_relative_path(path: Path) -> str:
+    """Convierte una ruta de salida a una ruta relativa legible.
+
+    Args:
+        path: Ruta absoluta o relativa del archivo.
+
+    Returns:
+        Ruta relativa en formato portable para consola/notebook.
+    """
+    path = Path(path)
+    parts = path.parts
+
+    if "outputs" in parts:
+        index = parts.index("outputs")
+        return str(Path(*parts[index:])).replace("\\", "/")
+
+    return path.name
+
+
+def save_dataframe(df: pd.DataFrame, output_path: Path) -> None:
+    """Guarda un DataFrame en CSV y reporta una ruta relativa.
 
     Args:
         df: DataFrame a guardar.
-        path: Ruta destino.
+        output_path: Ruta de salida del archivo CSV.
+
+    Raises:
+        ValueError: Si el DataFrame está vacío.
+        OSError: Si ocurre un error al crear carpetas o guardar el archivo.
     """
-    output_path = Path(path)
+    if df.empty:
+        raise ValueError("No se puede guardar un DataFrame vacío.")
+
+    output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=False, encoding="utf-8")
-    LOGGER.info("Tabla guardada en: %s", output_path)
+
+    logger.info("Tabla guardada en: %s", _display_relative_path(output_path))

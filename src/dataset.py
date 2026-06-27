@@ -39,6 +39,19 @@ def configure_logging(level: int = logging.INFO) -> None:
     )
 
 
+def format_dataset_path(path: str | Path) -> str:
+    """Devuelve una ruta relativa legible para mensajes de consola.
+
+    Args:
+        path: Ruta absoluta o relativa del dataset.
+
+    Returns:
+        Ruta breve en formato POSIX, por ejemplo ``data/candidatos_30.csv``.
+    """
+    dataset_path = Path(path)
+    return f"data/{dataset_path.name}"
+
+
 def normalize_experience(years: float, max_years: float = 4.0) -> float:
     """Normaliza años de experiencia al intervalo [0, 1].
 
@@ -145,13 +158,18 @@ def load_csv(path: str | Path) -> pd.DataFrame:
 
     Returns:
         DataFrame cargado.
+
+    Raises:
+        FileNotFoundError: Si el archivo no existe.
+        ValueError: Si el archivo no tiene extensión CSV.
     """
     csv_path = Path(path)
     if not csv_path.exists():
-        raise FileNotFoundError(f"No existe el archivo: {csv_path}")
+        raise FileNotFoundError(f"No existe el archivo: {format_dataset_path(csv_path)}")
     if csv_path.suffix.lower() != ".csv":
-        raise ValueError(f"El archivo debe ser CSV: {csv_path}")
-    LOGGER.info("Cargando dataset: %s", csv_path)
+        raise ValueError(f"El archivo debe ser CSV: {format_dataset_path(csv_path)}")
+
+    LOGGER.info("Cargando dataset: %s", format_dataset_path(csv_path))
     return pd.read_csv(csv_path)
 
 
